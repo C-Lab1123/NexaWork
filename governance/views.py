@@ -197,7 +197,7 @@ def account_setup(request, user_id, token):
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             invitation = (
-                AccountInvitation.objects.select_for_update()
+                AccountInvitation.objects.select_for_update(of=("self",))
                 .select_related("user", "user__organization")
                 .filter(user_id=user_id)
                 .first()
@@ -209,7 +209,7 @@ def account_setup(request, user_id, token):
                     {"invalid_invitation": True, "public_page": True},
                     status=400,
                 )
-            user = User.objects.select_for_update().get(pk=user_id)
+            user = User.objects.select_for_update(of=("self",)).get(pk=user_id)
             form = AccountSetupForm(user, request.POST, request.FILES)
             if not form.is_valid():
                 return render(
