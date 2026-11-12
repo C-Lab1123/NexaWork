@@ -10,7 +10,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         employee_id = os.getenv("NEXAWORK_BOOTSTRAP_SUPERUSER_EMPLOYEE_ID", "").strip()
-        password = os.getenv("NEXAWORK_BOOTSTRAP_SUPERUSER_PASSWORD", "")
+        password = os.getenv("NEXAWORK_BOOTSTRAP_SUPERUSER_PASSWORD") or os.getenv(
+            "DJANGO_SUPERUSER_PASSWORD", ""
+        )
         if not employee_id and not password:
             self.stdout.write("No deployment superuser credentials configured; skipping.")
             return
