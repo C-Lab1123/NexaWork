@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Announcements · NexaWork{% endblock %}
+{% block breadcrumb %}Announcements{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">WHAT’S HAPPENING AT WORK</div><h1>Announcements</h1><p class="muted">Important updates from across your organization.</p></div></div>
+<section class="announcement-list" data-live-announcements="card">
+  {% for announcement in announcements %}
+    <article class="panel announcement-card"><div class="announcement-card-top"><span class="announcement-icon">▤</span><div><h2>{{ announcement.title }}</h2><small>{{ announcement.created_at|date:"F j, Y" }}{% if announcement.branch %} · {{ announcement.branch.name }}{% else %} · All branches{% endif %}</small></div></div><div class="announcement-body">{{ announcement.body|linebreaks }}</div><div class="announcement-author">Posted by {{ announcement.created_by.get_full_name|default:"NexaWork administrator" }}</div></article>
+  {% empty %}
+    <div class="panel empty-state"><span>▤</span><h2>You’re all caught up</h2><p>New workplace announcements will appear here.</p></div>
+  {% endfor %}
+</section>
+{% endblock %}

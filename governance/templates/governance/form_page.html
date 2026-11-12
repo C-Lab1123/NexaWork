@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · NexaWork{% endblock %}
+{% block breadcrumb %}<a href="{% url 'manage_dashboard' %}">Administration</a> <span>/</span> {{ title }}{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">WORKPLACE MANAGEMENT</div><h1>{{ title }}</h1></div></div>
+<section class="panel form-page-panel">
+  {% if title == "Add employee" %}<p class="muted">NexaWork will email the employee a one-time link to create their own password. The administrator will not set or see the password.</p>{% endif %}
+  <form method="post" class="stacked-form">{% csrf_token %}
+    {% for field in form %}
+      <div class="form-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div>
+    {% endfor %}
+    {% for error in form.non_field_errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+    <div class="form-actions"><a class="button button-outline" href="{% url 'manage_dashboard' %}">Cancel</a><button class="button button-primary" type="submit">Save changes <span>→</span></button></div>
+  </form>
+</section>
+{% endblock %}

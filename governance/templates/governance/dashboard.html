@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Workplace administration · NexaWork{% endblock %}
+{% block breadcrumb %}Administration{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">WORKPLACE MANAGEMENT</div><h1>Administration</h1><p class="muted">Manage {{ user.organization.name }} and keep your teams connected.</p></div><a class="button button-primary" href="{% url 'manage_employee_create' %}">Add employee <span>+</span></a></div>
+<section class="stats-grid admin-stats">
+  <div class="stat-card"><span class="stat-icon violet">♧</span><span class="stat-number">{{ employee_count }}</span><span class="stat-label">Active employees</span></div>
+  <div class="stat-card"><span class="stat-icon blue">⌖</span><span class="stat-number">{{ branch_count }}</span><span class="stat-label">Active branches</span></div>
+  <div class="stat-card"><span class="stat-icon amber">▦</span><span class="stat-number">{{ department_count }}</span><span class="stat-label">Departments</span></div>
+  <div class="stat-card"><span class="stat-icon green">◷</span><span class="stat-number">{{ active_meetings }}</span><span class="stat-label">Active meetings</span></div>
+</section>
+<section class="admin-shortcuts">
+  <a class="admin-shortcut" href="{% url 'manage_employee_list' %}"><span>♧</span><strong>Employees</strong><small>View and manage your people</small></a>
+  <a class="admin-shortcut" href="{% url 'manage_branch_list' %}"><span>⌖</span><strong>Branches</strong><small>Coordinate locations</small></a>
+  <a class="admin-shortcut" href="{% url 'manage_department_list' %}"><span>▦</span><strong>Departments</strong><small>Organize your teams</small></a>
+  <a class="admin-shortcut" href="{% url 'manage_channel_list' %}"><span>◉</span><strong>Channels</strong><small>Manage workplace spaces</small></a>
+  <a class="admin-shortcut" href="{% url 'manage_announcement_create' %}"><span>▤</span><strong>Announcements</strong><small>Share an organization update</small></a>
+  <a class="admin-shortcut" href="{% url 'manage_meeting_create' %}"><span>◷</span><strong>Schedule meeting</strong><small>Invite your colleagues</small></a>
+  <a class="admin-shortcut" href="{% url 'manage_role_list' %}"><span>♧</span><strong>Roles & permissions</strong><small>Configure access controls</small></a>
+  <a class="admin-shortcut" href="{% url 'manage_audit_log' %}"><span>≋</span><strong>Audit log</strong><small>Review administrator activity</small></a>
+</section>
+<section class="panel admin-events"><div class="panel-heading"><div><div class="eyebrow">WORKSPACE ACTIVITY</div><h2>Recent administrative events</h2></div><a class="text-link" href="{% url 'manage_audit_log' %}">View audit log →</a></div>
+  {% for event in recent_events %}<div class="admin-event"><span class="event-dot"></span><strong>{{ event.action|title }}</strong><span>{% if event.actor %}{{ event.actor.get_full_name|default:event.actor.employee_id }}{% else %}System{% endif %}</span><time>{{ event.created_at|date:"M j · g:i A" }}</time></div>
+  {% empty %}<div class="empty-state compact"><span>≋</span><p>Administrative events will appear here.</p></div>{% endfor %}
+</section>
+{% endblock %}

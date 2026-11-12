@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}AI assistant · NexaWork{% endblock %}
+{% block breadcrumb %}AI assistant{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">YOUR WORKPLACE SIDEKICK</div><h1>AI assistant <span class="spark-inline">✦</span></h1><p class="muted">Get pointed to the right workplace information and resources.</p></div></div>
+<section class="assistant-page-grid">
+  <div class="panel assistant-chat-panel">
+    <div class="assistant-welcome"><div class="assistant-spark large-spark">✦</div><h2>How can I help?</h2><p class="muted">Ask about channels, meetings, announcements, or workplace files.</p></div>
+    {% if answer %}<div class="assistant-answer"><span class="assistant-small-spark">✦</span><div><strong>NexaWork assistant</strong><p>{{ answer }}</p></div></div>{% endif %}
+    <form method="post" class="assistant-form">{% csrf_token %}<label class="sr-only" for="question">Ask your question</label><textarea id="question" name="question" maxlength="1000" rows="2" required placeholder="Ask a workplace question…"></textarea><button class="button button-primary" type="submit">Ask <span>→</span></button></form>
+    <div class="assistant-disclaimer">Answers are generated from built-in workplace guidance. Do not enter sensitive personal or confidential information.</div>
+  </div>
+  <aside class="panel assistant-topics"><div class="eyebrow">TRY ASKING</div><h2>Quick topics</h2><div class="topic-item"><span>◉</span><div><strong>Channels</strong><small>Find a conversation space</small></div></div><div class="topic-item"><span>◷</span><div><strong>Meetings</strong><small>Learn how to join a meeting</small></div></div><div class="topic-item"><span>▧</span><div><strong>Workplace files</strong><small>Find shared team resources</small></div></div><div class="topic-item"><span>▤</span><div><strong>Announcements</strong><small>See the latest updates</small></div></div></aside>
+</section>
+{% if history %}<section class="panel assistant-history"><div class="eyebrow">RECENT QUESTIONS</div><h2>Your assistant history</h2>{% for exchange in history %}<details class="history-item"><summary>{{ exchange.question }}</summary><p>{{ exchange.answer }}</p></details>{% endfor %}</section>{% endif %}
+{% endblock %}

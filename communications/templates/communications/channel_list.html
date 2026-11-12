@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Channels · NexaWork{% endblock %}
+{% block breadcrumb %}<a href="{% url 'channel_list' %}">Channels</a>{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">YOUR TEAM, IN THE LOOP</div><h1>Channels</h1><p class="muted">Conversations for your workplace and teams.</p></div></div>
+<section class="channel-list">
+  {% for channel in channels %}
+    <a class="channel-list-item" href="{% url 'channel_detail' channel.id %}"><span class="channel-large-hash">#</span><span class="channel-list-copy"><strong>{{ channel.name }}</strong><small>{{ channel.description|default:"A place to share updates and ideas." }}</small></span><span class="channel-kind">{{ channel.get_kind_display }}</span><span class="meeting-chevron">›</span></a>
+  {% empty %}
+    <div class="panel empty-state"><span>◉</span><h2>No active channels</h2><p>Your workplace administrator can create a channel or restore an archived one.</p></div>
+  {% endfor %}
+</section>
+{% endblock %}

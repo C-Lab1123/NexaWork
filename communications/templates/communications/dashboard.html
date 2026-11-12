@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Overview · NexaWork{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
+{% block content %}
+<section class="welcome-row">
+  <div><div class="eyebrow">YOUR WORKPLACE AT A GLANCE</div><h1>Good to see you, {{ user.first_name|default:user.employee_id }}<span class="wave">✦</span></h1><p class="muted">Here’s what’s happening across your workspace.</p></div>
+  <div class="welcome-date">{% now "l, F j" %}</div>
+</section>
+<section class="stats-grid">
+  <a class="stat-card" href="{% url 'channel_list' %}"><span class="stat-icon violet">◉</span><span class="stat-number">{{ channels.count }}</span><span class="stat-label">Your channels</span><span class="stat-arrow">↗</span></a>
+  <a class="stat-card" href="{% url 'meeting_list' %}"><span class="stat-icon blue">◷</span><span class="stat-number">{{ upcoming_meetings.count }}</span><span class="stat-label">Upcoming meetings</span><span class="stat-arrow">↗</span></a>
+  <a class="stat-card" href="{% url 'announcements' %}"><span class="stat-icon amber">▤</span><span class="stat-number">{{ announcements.count }}</span><span class="stat-label">Recent announcements</span><span class="stat-arrow">↗</span></a>
+  <a class="stat-card" href="{% url 'file_list' %}"><span class="stat-icon green">▧</span><span class="stat-label">Workspace files</span><span class="stat-caption">Browse shared resources</span><span class="stat-arrow">↗</span></a>
+</section>
+<section class="dashboard-grid">
+  <div class="panel" data-live-announcements="preview">
+    <div class="panel-heading"><div><div class="eyebrow">STAY IN THE LOOP</div><h2>Latest announcements</h2></div><a class="text-link" href="{% url 'announcements' %}">View all →</a></div>
+    {% for announcement in announcements %}
+      <article class="announcement-preview">
+        <span class="announcement-dot"></span><div><h3>{{ announcement.title }}</h3><p>{{ announcement.body|truncatechars:145 }}</p><small>{{ announcement.created_at|date:"M j, Y" }}{% if announcement.branch %} · {{ announcement.branch.name }}{% endif %}</small></div>
+      </article>
+    {% empty %}<div class="empty-state compact"><span>▤</span><p>No announcements yet.</p></div>{% endfor %}
+  </div>
+  <div class="panel" data-live-meetings="preview">
+    <div class="panel-heading"><div><div class="eyebrow">MAKE TIME TO CONNECT</div><h2>Coming up</h2></div><a class="text-link" href="{% url 'meeting_list' %}">All meetings →</a></div>
+    {% for meeting in upcoming_meetings %}
+      <a class="meeting-preview" data-meeting-id="{{ meeting.id }}" href="{% url 'meeting_detail' meeting.id %}"><span class="meeting-date"><b>{{ meeting.starts_at|date:"d" }}</b><small>{{ meeting.starts_at|date:"M"|upper }}</small></span><span class="meeting-copy"><strong>{{ meeting.title }}</strong><small>{{ meeting.starts_at|date:"l · g:i A" }}</small></span><span class="meeting-chevron">›</span></a>
+    {% empty %}<div class="empty-state compact"><span>◷</span><p>No upcoming meetings.</p></div>{% endfor %}
+  </div>
+</section>
+<section class="panel channels-panel">
+  <div class="panel-heading"><div><div class="eyebrow">CONVERSATIONS THAT MOVE WORK FORWARD</div><h2>Your channels</h2></div><a class="text-link" href="{% url 'channel_list' %}">Browse channels →</a></div>
+  <div class="channel-cards">
+    {% for channel in channels %}
+      <a class="channel-card" href="{% url 'channel_detail' channel.id %}"><span class="channel-hash">#</span><span><strong>{{ channel.name }}</strong><small>{{ channel.description|default:"Workplace conversation" }}</small></span><span class="meeting-chevron">›</span></a>
+    {% empty %}<div class="empty-state compact"><span>◉</span><p>Your channels will appear here.</p></div>{% endfor %}
+  </div>
+</section>
+<section class="assistant-banner"><div class="assistant-spark">✦</div><div><div class="eyebrow">YOUR WORKPLACE SIDEKICK</div><h2>Meet your AI assistant</h2><p>Get quick help finding workplace information and resources.</p></div><a class="button button-light" href="{% url 'assistant_home' %}">Ask a question <span>→</span></a></section>
+{% endblock %}

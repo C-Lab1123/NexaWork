@@ -1,0 +1,72 @@
+services:
+  - type: web
+    name: nexawork
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --no-input
+    startCommand: python manage.py migrate --noinput && daphne -b 0.0.0.0 -p $PORT QueshStandards.asgi:application
+    initialDeployHook: python manage.py createsuperuser --noinput
+    healthCheckPath: /ready/
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.3"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
+      - key: DJANGO_SECURE_SSL_REDIRECT
+        value: "true"
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: nexawork-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: nexawork-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: nexawork-db
+          property: password
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: nexawork-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: nexawork-db
+          property: port
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: nexawork-redis
+          property: connectionString
+      - key: EMAIL_PORT
+        value: "2525"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DJANGO_SUPERUSER_EMPLOYEE_ID
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+
+  - type: keyvalue
+    name: nexawork-redis
+    plan: free
+    region: frankfurt
+    maxmemoryPolicy: noeviction
+
+databases:
+  - name: nexawork-db
+    plan: free
+    region: frankfurt
+    databaseName: nexawork
+    user: nexawork

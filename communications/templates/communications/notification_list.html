@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Notifications · NexaWork{% endblock %}
+{% block breadcrumb %}Notifications{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">YOUR WORKPLACE UPDATES</div><h1>Notifications</h1><p class="muted">Stay up to date with activity that matters to you.</p></div></div>
+<section class="notification-list">
+  {% for item in notifications %}
+    <article class="notification-item {% if not item.is_read %}unread{% endif %}"><span class="notification-icon">✦</span><div class="notification-copy"><strong>{{ item.title }}</strong><p>{{ item.body }}</p><small>{{ item.created_at|date:"M j, Y · g:i A" }}</small></div>{% if not item.is_read %}<form method="post" action="{% url 'mark_notification_read' item.id %}">{% csrf_token %}<button class="button button-outline small-button" type="submit">Mark read</button></form>{% endif %}</article>
+  {% empty %}
+    <div class="panel empty-state"><span>✦</span><h2>You’re all caught up</h2><p>Your workplace notifications will appear here.</p></div>
+  {% endfor %}
+</section>
+{% endblock %}

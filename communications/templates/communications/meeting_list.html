@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Meetings · NexaWork{% endblock %}
+{% block breadcrumb %}Meetings{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">BRING EVERYONE TOGETHER</div><h1>Meetings</h1><p class="muted">Your organization’s upcoming conversations.</p></div></div>
+<section class="meeting-list" data-live-meetings="list">
+  {% for meeting in meetings %}
+    <a class="meeting-list-card" data-meeting-id="{{ meeting.id }}" href="{% url 'meeting_detail' meeting.id %}"><span class="meeting-date large"><b>{{ meeting.starts_at|date:"d" }}</b><small>{{ meeting.starts_at|date:"M"|upper }}</small></span><span class="meeting-list-copy"><strong>{{ meeting.title }}</strong><small>{{ meeting.starts_at|date:"l, F j · g:i A" }}{% if meeting.host %} · Hosted by {{ meeting.host.get_full_name|default:meeting.host.employee_id }}{% endif %} · {{ meeting.get_meeting_type_display }}</small>{% if meeting.description %}<span>{{ meeting.description|truncatechars:130 }}</span>{% endif %}</span><span class="button button-outline small-button">Open meeting →</span></a>
+  {% empty %}
+    <div class="panel empty-state"><span>◷</span><h2>No meetings scheduled</h2><p>Upcoming workplace meetings will show up here.</p></div>
+  {% endfor %}
+</section>
+<p class="inline-note">Meeting schedules are managed by your workplace host or administrator.</p>
+{% endblock %}

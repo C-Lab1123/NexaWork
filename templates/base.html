@@ -1,0 +1,61 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10233f">
+  <title>{% block title %}NexaWork{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/nexawork.css' %}?v=9">
+  <script defer src="{% static 'js/password-visibility.js' %}"></script>
+  {% if user.is_authenticated %}
+    <script defer src="{% static 'js/local-datetime.js' %}"></script>
+    <script defer src="{% static 'js/notifications.js' %}"></script>
+  {% endif %}
+  {% block head %}{% endblock %}
+</head>
+<body {% if meeting %}data-meeting-type="{{ meeting.meeting_type }}"{% endif %}>
+{% if user.is_authenticated and not public_page %}
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="{% url 'dashboard' %}">
+        <span class="brand-mark">N</span><span>NexaWork<small>CONNECT. COLLABORATE.</small></span>
+      </a>
+      <div class="workspace-label">WORKSPACE</div>
+      <form class="global-search" action="{% url 'global_search' %}" method="get"><label class="sr-only" for="global-search">Search NexaWork</label><input id="global-search" name="q" placeholder="Search workspace…" value="{{ request.GET.q }}"></form>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="{% url 'dashboard' %}"><span>◫</span> Overview</a>
+        <a href="{% url 'channel_list' %}"><span>◉</span> Channels</a>
+        <a href="{% url 'meeting_list' %}"><span>◷</span> Meetings</a>
+        <a href="{% url 'announcements' %}"><span>▤</span> Announcements</a>
+        <a href="{% url 'file_list' %}"><span>▧</span> Files</a>
+        <a href="{% url 'assistant_home' %}"><span>✦</span> AI assistant</a>
+        {% if can_manage_workspace %}<div class="workspace-label nav-section-label">MANAGE</div><a href="{% url 'manage_dashboard' %}"><span>⚙</span> Admin workspace</a>{% endif %}
+        {% if user.is_superuser and not user.organization_id %}<a href="{% url 'company_setup' %}"><span>⚙</span> Company setup</a>{% endif %}
+      </nav>
+      <div class="sidebar-footer">
+        <a class="avatar avatar-link" href="{% url 'profile' %}">{% if user.profile_picture %}<img src="{% url 'profile_photo' user.id %}" alt="">{% else %}{{ user.first_name|default:user.employee_id|slice:":1"|upper }}{% endif %}</a>
+        <a class="profile-copy" href="{% url 'profile' %}"><strong>{{ user.get_full_name|default:user.employee_id }}</strong><span>{{ user.get_role_display }}</span></a>
+        {% if user.is_staff %}<a class="admin-link" href="{% url 'admin:index' %}" aria-label="Django administration">⚙</a>{% endif %}
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="signout" type="submit" title="Sign out">↗</button></form>
+      </div>
+    </aside>
+    <main class="main-area">
+      <header class="topbar">
+        <div class="breadcrumb">NexaWork <span>/</span> {% block breadcrumb %}Workspace{% endblock %}</div>
+        <div class="topbar-right">
+          {% if user.organization %}<span class="org-pill">{{ user.organization.name }}</span>{% endif %}
+          <a class="notification-pill" href="{% url 'notification_list' %}" data-latest-id="{{ latest_notification_id|default:0 }}">● {{ unread_notifications|default:0 }}</a>
+          <a class="top-avatar" href="{% url 'profile' %}">{% if user.profile_picture %}<img src="{% url 'profile_photo' user.id %}" alt="">{% else %}{{ user.first_name|default:user.employee_id|slice:":1"|upper }}{% endif %}</a>
+        </div>
+      </header>
+      {% if messages %}<div class="flash-stack">{% for message in messages %}<div class="flash {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+      <div class="page-content">{% block content %}{% endblock %}</div>
+      <footer class="footer">NexaWork <span>·</span> Connect. Collaborate. Work smarter.</footer>
+    </main>
+  </div>
+{% else %}
+  {% block public_content %}{% endblock %}
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Finish setup · NexaWork{% endblock %}
+{% block breadcrumb %}Workspace setup{% endblock %}
+{% block content %}
+<section class="panel empty-state setup-card"><span>✦</span><div class="eyebrow">WELCOME TO NEXAWORK</div><h1>Your workspace is almost ready.</h1><p>Create your organization in the administration area, then assign it to your employer account to get started.</p><a class="button button-primary" href="{% url 'admin:index' %}">Open administration <span>→</span></a></section>
+{% endblock %}

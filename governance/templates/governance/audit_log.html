@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Audit log · NexaWork{% endblock %}
+{% block breadcrumb %}<a href="{% url 'manage_dashboard' %}">Administration</a> <span>/</span> Audit log{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">SECURITY & ACCOUNTABILITY</div><h1>Audit log</h1><p class="muted">Administrative events for your organization.</p></div></div>
+<form method="get" class="table-toolbar"><input name="action" value="{{ action }}" placeholder="Filter by action"><button class="button button-outline small-button">Filter</button></form>
+<section class="panel table-panel"><div class="responsive-table"><table><thead><tr><th>Event</th><th>Actor</th><th>Resource</th><th>Result</th><th>Time</th></tr></thead><tbody>{% for event in events %}<tr><td><strong>{{ event.action }}</strong><small>{{ event.metadata|default:"" }}</small></td><td>{% if event.actor %}{{ event.actor.get_full_name|default:event.actor.employee_id }}{% else %}System{% endif %}</td><td>{{ event.resource_type }} {% if event.resource_id %}#{{ event.resource_id }}{% endif %}</td><td><span class="status-tag {% if event.result == 'failure' %}removed{% else %}active{% endif %}">{{ event.get_result_display }}</span></td><td>{{ event.created_at|date:"M j, Y · g:i:s A" }}</td></tr>{% empty %}<tr><td colspan="5"><div class="empty-state compact"><p>No events recorded yet.</p></div></td></tr>{% endfor %}</tbody></table></div><div class="table-foot">Showing up to 250 events</div></section>
+{% endblock %}

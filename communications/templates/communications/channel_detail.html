@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+{% block title %}{% if channel.kind == "direct" %}{{ channel_title }}{% else %}#{{ channel.name }}{% endif %} · NexaWork{% endblock %}
+{% block breadcrumb %}<a href="{% url 'channel_list' %}">Channels</a> <span>/</span> {% if channel.kind == "direct" %}{{ channel_title }}{% else %}#{{ channel.name }}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-heading channel-heading"><div><div class="eyebrow">{{ channel.get_kind_display|upper }}{% if channel.kind != "direct" %} CHANNEL{% endif %}</div><h1>{% if channel.kind != "direct" %}<span class="channel-hash">#</span>{% endif %}{{ channel_title|default:channel.name }}</h1><p class="muted">{{ channel.description|default:"Share an update or join the conversation." }}</p></div></div>
+<section class="chat-panel">
+  <div class="chat-toolbar"><span class="chat-toolbar-label"><i class="online-dot"></i> Conversation</span><span id="connection-status" class="chat-connection-status" role="status" aria-live="polite">{% if channel.archived_at %}Archived · read only{% else %}Live updates on{% endif %}</span></div>
+  {% if channel.archived_at %}<p class="meeting-chat-status">This channel was archived on {{ channel.archived_at|date:"N j, Y" }}. Its history is available, but new messages are disabled.</p>{% endif %}
+  <div id="chat-messages" class="chat-messages" data-endpoint="{% url 'channel_messages' channel.id %}" data-read-endpoint="{{ read_endpoint }}" data-websocket="/ws/channels/{{ channel.id }}/">
+    {% for message in chat_messages %}
+      <article class="chat-message {% if message.author_id == user.id %}mine{% endif %}" data-message-id="{{ message.id }}" data-deleted="{% if message.deleted_at %}true{% else %}false{% endif %}">
+        <span class="avatar chat-avatar" aria-hidden="true">{% if message.author.profile_picture %}<img src="{% url 'profile_photo' message.author_id %}" alt="">{% else %}{{ message.author.first_name|default:message.author.employee_id|slice:":1"|upper }}{% endif %}</span>
+        <div class="chat-bubble">
+          <div class="chat-meta"><strong>{{ message.author.get_full_name|default:message.author.employee_id }}</strong><time>{{ message.created_at|date:"g:i A" }}</time></div>
+          {% if message.reply_to %}<button class="quoted-message" type="button" data-jump-to="{{ message.reply_to_id }}" aria-label="Jump to {{ message.reply_to.author.get_full_name|default:message.reply_to.author.employee_id }}’s message"><strong>{{ message.reply_to.author.get_full_name|default:message.reply_to.author.employee_id }}</strong><p>{% if message.reply_to.deleted_at %}This message was deleted.{% else %}{{ message.reply_to.body|truncatechars:160 }}{% endif %}</p></button>{% endif %}
+          <p>{% if message.deleted_at %}This message was deleted.{% else %}{{ message.body }}{% endif %}</p>
+          <div class="chat-message-footer">
+            {% if not channel.archived_at and not message.deleted_at %}<button class="reply-action" type="button" data-reply-id="{{ message.id }}">Reply</button>{% endif %}
+            {% if message.author_id == user.id %}<span class="seen-status" data-state="{% if message.seen_count %}seen{% else %}sent{% endif %}" data-seen-count="{{ message.seen_count }}">{% if message.seen_count %}Seen by {{ message.seen_count }}{% else %}Sent{% endif %}</span>{% endif %}
+          </div>
+        </div>
+      </article>
+    {% empty %}
+      <div class="chat-empty">This is the beginning of <strong>#{{ channel.name }}</strong>. Say hello to your team.</div>
+    {% endfor %}
+  </div>
+  {% if not channel.archived_at %}<form method="post" class="chat-compose">{% csrf_token %}
+    <input type="hidden" name="reply_to" id="reply-to-id">
+    <div id="reply-preview" class="reply-preview" role="status" hidden><span class="reply-preview-mark" aria-hidden="true">↪</span><span class="reply-preview-copy"><strong id="reply-preview-author"></strong><small id="reply-preview-body"></small></span><button id="cancel-reply" type="button" aria-label="Cancel reply">×</button></div>
+    <div class="chat-compose-row"><label class="sr-only" for="message-body">Write a message</label><textarea id="message-body" name="body" maxlength="4000" rows="1" placeholder="Message {% if channel.kind == 'direct' %}{{ channel_title }}{% else %}#{{ channel.name }}{% endif %}" required></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></div>
+  </form>{% endif %}
+</section>
+{% if not channel.archived_at %}
+<script>
+(() => {
+  const list = document.getElementById("chat-messages");
+  const form = document.querySelector(".chat-compose");
+  const input = document.getElementById("message-body");
+  const status = document.getElementById("connection-status");
+  const sendButton = form.querySelector('button[type="submit"]');
+  const replyToInput = document.getElementById("reply-to-id");
+  const replyPreview = document.getElementById("reply-preview");
+  const replyPreviewAuthor = document.getElementById("reply-preview-author");
+  const replyPreviewBody = document.getElementById("reply-preview-body");
+  let latestId = Math.max(0, ...[...list.querySelectorAll("[data-message-id]")]
+    .map(row => Number(row.dataset.messageId) || 0));
+  let socket;
+  let polling = false;
+  let fallbackTimer;
+  let reconnectTimer;
+  let archived = false;
+  const isSocketOpen = () => "WebSocket" in window && socket?.readyState === WebSocket.OPEN;
+  const renderSeenStatus = (row, count) => {
+    const seen = row.querySelector(".seen-status");
+    if (!seen) return;
+    count = Math.max(Number(seen.dataset.seenCount) || 0, Number(count) || 0);
+    seen.dataset.seenCount = count;
+    seen.dataset.state = count ? "seen" : "sent";
+    seen.textContent = count ? `Seen by ${count}` : "Sent";
+    seen.title = count ? `${count} channel member${count === 1 ? "" : "s"} saw this message` : "Sent";
+  };
+  const renderQuotedMessage = reply => {
+    if (!reply) return null;
+    const quote = document.createElement("button");
+    quote.className = "quoted-message";
+    quote.type = "button";
+    quote.dataset.jumpTo = reply.id;
+    quote.setAttribute("aria-label", `Jump to ${reply.author}'s message`);
+    const author = document.createElement("strong");
+    author.textContent = reply.author;
+    const body = document.createElement("p");
+    body.textContent = reply.body.length > 160 ? `${reply.body.slice(0, 157)}…` : reply.body;
+    quote.append(author, body);
+    return quote;
+  };
+  const renderMessage = item => {
+    if (!item.id) return;
+    const existing = list.querySelector(`[data-message-id="${item.id}"]`);
+    if (existing) return;
+    list.querySelector(".chat-empty")?.remove();
+    const row = document.createElement("article");
+    row.className = `chat-message${item.mine ? " mine" : ""}`;
+    row.dataset.messageId = item.id;
+    const avatar = document.createElement("span");
+    avatar.className = "avatar chat-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    if (item.profile_photo_url) {
+      const image = document.createElement("img");
+      image.src = item.profile_photo_url;
+      image.alt = "";
+      avatar.append(image);
+    } else {
+      avatar.textContent = item.author.slice(0, 1).toUpperCase();
+    }
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+    const meta = document.createElement("div");
+    meta.className = "chat-meta";
+    const author = document.createElement("strong");
+    author.textContent = item.author;
+    const time = document.createElement("time");
+    time.textContent = item.created_at;
+    const body = document.createElement("p");
+    body.textContent = item.body;
+    meta.append(author, time);
+    bubble.append(meta);
+    const quote = renderQuotedMessage(item.reply_to);
+    if (quote) bubble.append(quote);
+    bubble.append(body);
+    const footer = document.createElement("div");
+    footer.className = "chat-message-footer";
+    if (!item.deleted) {
+      const replyButton = document.createElement("button");
+      replyButton.className = "reply-action";
+      replyButton.type = "button";
+      replyButton.dataset.replyId = item.id;
+      replyButton.textContent = "Reply";
+      footer.append(replyButton);
+    }
+    if (item.mine) {
+      const seen = document.createElement("span");
+      seen.className = "seen-status";
+      footer.append(seen);
+    }
+    bubble.append(footer);
+    row.append(avatar, bubble);
+    row.dataset.deleted = item.deleted ? "true" : "false";
+    list.append(row);
+    if (item.mine) renderSeenStatus(row, item.seen_count || 0);
+    list.scrollTop = list.scrollHeight;
+    observeMessage(row);
+    latestId = Math.max(latestId, Number(item.id));
+  };
+  const setReply = messageId => {
+    const row = list.querySelector(`[data-message-id="${messageId}"]`);
+    if (!row || row.dataset.deleted === "true") return;
+    replyToInput.value = messageId;
+    replyPreviewAuthor.textContent = row.querySelector(".chat-meta strong").textContent;
+    replyPreviewBody.textContent = row.querySelector(".chat-bubble > p").textContent;
+    replyPreview.hidden = false;
+    input.focus();
+  };
+  const clearReply = () => {
+    replyToInput.value = "";
+    replyPreview.hidden = true;
+    replyPreviewAuthor.textContent = "";
+    replyPreviewBody.textContent = "";
+  };
+  const observer = "IntersectionObserver" in window
+    ? new IntersectionObserver(entries => {
+        const visibleIds = [];
+        for (const entry of entries) {
+          if (document.hidden || !entry.isIntersecting) continue;
+          const row = entry.target;
+          if (!row.classList.contains("mine") && row.dataset.read !== "true") {
+            row.dataset.read = "true";
+            visibleIds.push(row.dataset.messageId);
+          }
+        }
+        if (visibleIds.length) markMessagesSeen(visibleIds);
+      }, {root: list, threshold: 0})
+    : null;
+  const observeMessage = row => {
+    if (observer) observer.observe(row);
+    else if (
+      !row.classList.contains("mine")
+      && !document.hidden
+      && row.dataset.read !== "true"
+      && isMessageVisible(row)
+    ) {
+      row.dataset.read = "true";
+      markMessagesSeen([row.dataset.messageId]);
+    }
+  };
+  const isMessageVisible = row => {
+    const listBounds = list.getBoundingClientRect();
+    const rowBounds = row.getBoundingClientRect();
+    return rowBounds.bottom > listBounds.top && rowBounds.top < listBounds.bottom;
+  };
+  const markMessagesSeen = async messageIds => {
+    const data = new FormData();
+    data.append("csrfmiddlewaretoken", form.querySelector('[name="csrfmiddlewaretoken"]').value);
+    messageIds.forEach(id => data.append("message_ids", id));
+    try {
+      const response = await fetch(list.dataset.readEndpoint, {
+        method: "POST",
+        body: data,
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `Seen status update failed (${response.status}).`);
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Could not update seen status.";
+      console.error("NexaWork message seen update failed", error);
+      messageIds.forEach(id => {
+        const row = list.querySelector(`[data-message-id="${id}"]`);
+        if (row) {
+          row.dataset.read = "false";
+          observer?.unobserve(row);
+          observeMessage(row);
+        }
+      });
+    }
+  };
+  list.addEventListener("click", event => {
+    const replyButton = event.target.closest("[data-reply-id]");
+    if (replyButton) {
+      setReply(replyButton.dataset.replyId);
+      return;
+    }
+    const quoteButton = event.target.closest("[data-jump-to]");
+    if (quoteButton) {
+      const target = list.querySelector(`[data-message-id="${quoteButton.dataset.jumpTo}"]`);
+      if (!target) return;
+      target.scrollIntoView({behavior: "smooth", block: "center"});
+      target.classList.add("chat-message-highlight");
+      window.setTimeout(() => target.classList.remove("chat-message-highlight"), 1400);
+    }
+  });
+  document.getElementById("cancel-reply").addEventListener("click", clearReply);
+  const poll = async () => {
+    if (polling || document.hidden) return;
+    polling = true;
+    try {
+      let result;
+      do {
+        const response = await fetch(`${list.dataset.endpoint}?after=${latestId}`, {
+          headers: {"X-Requested-With": "XMLHttpRequest"},
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error(`Message sync failed (${response.status}).`);
+        result = await response.json();
+        result.messages.forEach(renderMessage);
+        Object.entries(result.seen_counts || {}).forEach(([id, count]) => {
+          const row = list.querySelector(`[data-message-id="${id}"]`);
+          if (row) renderSeenStatus(row, count);
+        });
+      } while (result.messages.length === 100);
+      if (isSocketOpen()) status.textContent = "Live updates on";
+    } catch (error) {
+      status.textContent = "Could not sync messages. Retrying…";
+      console.error("NexaWork channel message sync failed", error);
+    } finally {
+      polling = false;
+    }
+  };
+  const connect = () => {
+    if (!("WebSocket" in window)) {
+      status.textContent = "Live connection unavailable; syncing messages";
+      return;
+    }
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    try {
+      socket = new WebSocket(`${protocol}//${window.location.host}${list.dataset.websocket}`);
+    } catch (error) {
+      status.textContent = "Live connection unavailable; syncing messages";
+      console.error("NexaWork channel connection failed", error);
+      reconnectTimer = window.setTimeout(connect, 2000);
+      return;
+    }
+    socket.addEventListener("open", () => {
+      window.clearInterval(fallbackTimer);
+      fallbackTimer = undefined;
+      window.clearTimeout(reconnectTimer);
+      status.textContent = "Live updates on";
+      poll();
+    });
+    socket.addEventListener("close", () => {
+      if (archived) return;
+      status.textContent = "Reconnecting; syncing messages…";
+      fallbackTimer ??= window.setInterval(poll, 3000);
+      reconnectTimer = window.setTimeout(connect, 2000);
+    });
+    socket.addEventListener("error", () => {
+      status.textContent = "Connection interrupted; syncing messages…";
+    });
+    socket.addEventListener("message", event => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "message.created") renderMessage(data);
+        if (data.type === "messages.seen") {
+          for (const id of data.message_ids) {
+            const row = list.querySelector(`[data-message-id="${id}"]`);
+            if (row?.classList.contains("mine")) {
+              renderSeenStatus(
+                row,
+                Number(row.querySelector(".seen-status")?.dataset.seenCount) + 1,
+              );
+            }
+          }
+        }
+        if (data.type === "channel.archived") {
+          archived = true;
+          status.textContent = "Archived · read only";
+          form.hidden = true;
+          window.clearInterval(fallbackTimer);
+          window.clearTimeout(reconnectTimer);
+          return;
+        }
+        if (data.type === "typing") {
+          status.textContent = data.typing ? `${data.name} is typing…` : "Live updates on";
+        }
+        if (data.type === "user.online") status.textContent = `${data.name} is online`;
+        if (data.type === "error") status.textContent = data.detail || "The message could not be sent.";
+      } catch (error) {
+        status.textContent = "Received an invalid chat update.";
+        console.error("NexaWork channel received an invalid update", error);
+      }
+    });
+  };
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const body = input.value.trim();
+    if (!body) return;
+    sendButton.disabled = true;
+    try {
+      const response = await fetch(list.dataset.endpoint, {
+        method: "POST",
+        body: new FormData(form),
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const result = contentType.includes("application/json") ? await response.json() : {};
+      if (!response.ok) throw new Error(result.error || `Message send failed (${response.status}).`);
+      if (!result.id) throw new Error("The server returned an invalid message response.");
+      renderMessage(result);
+      input.value = "";
+      clearReply();
+      status.textContent = isSocketOpen()
+        ? "Live updates on"
+        : "Message sent; reconnecting to live updates…";
+    } catch (error) {
+      status.textContent = error instanceof Error
+        ? `Message not sent: ${error.message}`
+        : "Message not sent. Please try again.";
+      console.error("NexaWork channel message send failed", error);
+    } finally {
+      sendButton.disabled = false;
+      input.focus();
+    }
+  });
+  let typingTimer;
+  input.addEventListener("input", () => {
+    if (!isSocketOpen()) return;
+    socket.send(JSON.stringify({type: "typing.started"}));
+    window.clearTimeout(typingTimer);
+    typingTimer = window.setTimeout(() => {
+      if (isSocketOpen()) {
+        socket.send(JSON.stringify({type: "typing.stopped"}));
+      }
+    }, 900);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      list.querySelectorAll("[data-message-id]").forEach(row => {
+        observer?.unobserve(row);
+        observeMessage(row);
+      });
+      poll();
+    }
+  });
+  fallbackTimer = window.setInterval(poll, 3000);
+  connect();
+  list.scrollTop = list.scrollHeight;
+  list.querySelectorAll("[data-message-id]").forEach(observeMessage);
+})();
+</script>
+{% endif %}
+{% endblock %}

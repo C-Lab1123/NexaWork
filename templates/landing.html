@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}NexaWork · Great work happens when teams connect{% endblock %}
+{% block head %}
+  <meta name="description" content="Bring workplace conversations, team collaboration, company updates, meetings, and shared resources together with NexaWork.">
+{% endblock %}
+{% block public_content %}
+<main class="landing-page">
+  <section class="landing-hero" aria-labelledby="landing-title">
+    <picture class="landing-hero-image">
+      <source media="(max-width: 600px)" srcset="{% static 'images/nexawork-team-mobile.svg' %}">
+      <img src="{% static 'images/nexawork-team.svg' %}" alt="Illustration of Black African colleagues sharing ideas in a workplace meeting">
+    </picture>
+    <div class="landing-hero-shade"></div>
+    <header class="landing-header">
+      <a class="landing-brand" href="{% url 'home' %}" aria-label="NexaWork home">
+        <span class="brand-mark">N</span><span>NexaWork</span>
+      </a>
+      <nav class="landing-nav" aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#resources">Resources</a>
+        {% if user.is_authenticated %}
+          <a class="landing-nav-signin" href="{% url 'dashboard' %}">Open workspace <span>→</span></a>
+        {% else %}
+          <a class="landing-nav-signin" href="{% url 'employee_login' %}">Sign in <span>→</span></a>
+        {% endif %}
+      </nav>
+    </header>
+    <div class="landing-hero-content">
+      <p class="landing-eyebrow"><span>CONNECT.</span> COLLABORATE. WORK SMARTER.</p>
+      <h1 id="landing-title">Great work happens<br>when teams <em>connect.</em></h1>
+      <p class="landing-intro">Bring workplace conversations, team collaboration, company updates, and meetings together in one organized workspace.</p>
+      <div class="landing-actions">
+        {% if user.is_authenticated %}
+          <a class="landing-button landing-button-primary" href="{% url 'dashboard' %}">Go to your workspace <span>→</span></a>
+        {% else %}
+          <a class="landing-button landing-button-primary" href="{% url 'employee_login' %}">Get started <span>→</span></a>
+        {% endif %}
+        <a class="landing-button landing-button-quiet" href="#features">Explore features <span>↓</span></a>
+      </div>
+    </div>
+    <div class="landing-hero-caption"><span aria-hidden="true">♧</span><p><strong>Built around people.</strong><br>Designed for the way teams work.</p></div>
+  </section>
+
+  <section class="landing-section landing-features" id="features" aria-labelledby="features-title">
+    <div class="landing-section-heading">
+      <p class="landing-eyebrow landing-eyebrow-dark">ONE WORKSPACE. EVERYTHING IN SYNC.</p>
+      <h2 id="features-title">The important work, all in one place.</h2>
+      <p>Spend less time looking for information and more time moving great work forward.</p>
+    </div>
+    <div class="landing-feature-grid">
+      <a class="landing-feature-card" href="{% if user.is_authenticated %}{% url 'channel_list' %}{% else %}{% url 'employee_login' %}?next={% url 'channel_list' %}{% endif %}">
+        <span class="landing-feature-icon landing-icon-blue" aria-hidden="true">◉</span>
+        <h3>Team conversations</h3>
+        <p>Bring people together in focused channels and direct conversations.</p>
+        <span class="landing-card-link">Explore channels <span>→</span></span>
+      </a>
+      <a class="landing-feature-card" href="{% if user.is_authenticated %}{% url 'announcements' %}{% else %}{% url 'employee_login' %}?next={% url 'announcements' %}{% endif %}">
+        <span class="landing-feature-icon landing-icon-violet" aria-hidden="true">▤</span>
+        <h3>Company updates</h3>
+        <p>Keep important announcements easy to find and visible to your team.</p>
+        <span class="landing-card-link">View announcements <span>→</span></span>
+      </a>
+      <a class="landing-feature-card" href="{% if user.is_authenticated %}{% url 'meeting_list' %}{% else %}{% url 'employee_login' %}?next={% url 'meeting_list' %}{% endif %}">
+        <span class="landing-feature-icon landing-icon-amber" aria-hidden="true">◷</span>
+        <h3>Meetings that connect</h3>
+        <p>See scheduled meetings, open invitations, and bring your people together.</p>
+        <span class="landing-card-link">See meetings <span>→</span></span>
+      </a>
+      <a class="landing-feature-card" href="{% if user.is_authenticated %}{% url 'file_list' %}{% else %}{% url 'employee_login' %}?next={% url 'file_list' %}{% endif %}">
+        <span class="landing-feature-icon landing-icon-green" aria-hidden="true">▧</span>
+        <h3>Shared resources</h3>
+        <p>Give employees one organized place for useful workplace files.</p>
+        <span class="landing-card-link">Browse shared files <span>→</span></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="landing-resource-band" id="resources" aria-labelledby="resources-title">
+    <div>
+      <p class="landing-eyebrow landing-eyebrow-dark">A BETTER WAY TO WORK TOGETHER</p>
+      <h2 id="resources-title">Your team’s work, within reach.</h2>
+      <p>Catch up on updates, find a conversation, check a meeting, or get help from the NexaWork assistant.</p>
+    </div>
+    <div class="landing-resource-links">
+      <a href="{% if user.is_authenticated %}{% url 'assistant_home' %}{% else %}{% url 'employee_login' %}?next={% url 'assistant_home' %}{% endif %}"><span>✦</span> AI assistant <b>→</b></a>
+      <a href="{% if user.is_authenticated %}{% url 'notification_list' %}{% else %}{% url 'employee_login' %}?next={% url 'notification_list' %}{% endif %}"><span>●</span> Notifications <b>→</b></a>
+      <a href="{% if user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'employee_login' %}?next={% url 'dashboard' %}{% endif %}"><span>◫</span> Workspace overview <b>→</b></a>
+    </div>
+  </section>
+
+  <footer class="landing-footer">
+    <a class="landing-brand landing-brand-footer" href="{% url 'home' %}"><span class="brand-mark">N</span><span>NexaWork</span></a>
+    <p>Connect. Collaborate. Work smarter.</p>
+    <a href="{% url 'employer_login' %}">Employer sign in <span>→</span></a>
+  </footer>
+</main>
+{% endblock %}

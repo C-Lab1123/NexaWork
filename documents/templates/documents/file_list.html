@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Files · NexaWork{% endblock %}
+{% block breadcrumb %}Files{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">SHARED WORKPLACE RESOURCES</div><h1>Files</h1><p class="muted">Find and securely access documents shared with your team.</p></div></div>
+<section class="document-layout">
+  <div class="document-list">
+    {% for item in files %}
+      <article class="document-card">
+        <span class="document-icon">▧</span>
+        <div class="document-copy">
+          <strong>{{ item.title }}</strong>
+          <small>{{ item.description|default:item.file.name|cut:"private_documents/" }} · {{ item.uploaded_at|date:"M j, Y" }}</small>
+          {% if item.branch %}<span class="status-tag">{{ item.branch.name }}</span>{% endif %}
+          {% if item.versions.exists %}
+          <details>
+            <summary>Version history ({{ item.versions.count }})</summary>
+            {% for version in item.versions.all %}
+              <p><a href="{% url 'file_version_download' item.id version.id %}">Download previous version</a>
+                · {{ version.uploaded_at|date:"M j, Y" }}
+                {% if version.uploaded_by %}by {{ version.uploaded_by.get_full_name|default:version.uploaded_by.employee_id }}{% endif %}
+              </p>
+            {% endfor %}
+          </details>
+          {% endif %}
+          {% if can_upload_files %}
+          <details>
+            <summary>Upload new version</summary>
+            <form method="post" action="{% url 'file_upload_version' item.id %}" enctype="multipart/form-data" class="stacked-form">
+              {% csrf_token %}
+              <div class="form-field"><label for="version-file-{{ item.id }}">Choose replacement file</label><input id="version-file-{{ item.id }}" name="file" type="file" required></div>
+              <button class="button button-primary small-button" type="submit">Upload version</button>
+            </form>
+          </details>
+          {% endif %}
+        </div>
+        <a class="button button-outline small-button" href="{% url 'file_download' item.id %}">Download ↓</a>
+      </article>
+    {% empty %}
+      <div class="panel empty-state"><span>▧</span><h2>No shared files yet</h2><p>Files shared with your organization will appear here.</p></div>
+    {% endfor %}
+  </div>
+  {% if can_upload_files %}
+  <aside class="panel upload-panel"><div class="eyebrow">WORKPLACE LIBRARY</div><h2>Share a file</h2><p class="muted">Upload a resource for people in your organization.</p>
+    <form method="post" enctype="multipart/form-data" class="stacked-form">{% csrf_token %}
+      {% for field in form %}<div class="form-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div>{% endfor %}
+      {% for error in form.non_field_errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+      <button class="button button-primary button-wide" type="submit">Upload securely <span>↑</span></button>
+    </form>
+    <p class="provider-note">Private files are served only after sign-in and an access check. Maximum size: 25 MB.</p>
+  </aside>
+  {% endif %}
+</section>
+{% endblock %}

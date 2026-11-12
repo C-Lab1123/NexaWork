@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Set up your account · NexaWork{% endblock %}
+{% block public_content %}
+<main class="login-layout">
+  <section class="login-showcase">
+    <a class="brand brand-light" href="{% url 'employee_login' %}">
+      <span class="brand-mark">N</span><span>NexaWork<small>CONNECT. COLLABORATE.</small></span>
+    </a>
+    <div class="showcase-copy">
+      <div class="eyebrow">YOUR WORKPLACE, IN SYNC</div>
+      <h1>Welcome to<br><em>NexaWork.</em></h1>
+      <p>Choose a password to finish setting up your workplace account.</p>
+    </div>
+    <div class="showcase-foot">A more connected way to work.</div>
+  </section>
+  <section class="login-panel">
+    <div class="login-card">
+      <div class="login-icon">✳</div>
+      <div class="eyebrow">ACCOUNT SETUP</div>
+      {% if invalid_invitation %}
+        <h2>This link is no longer valid</h2>
+        <p class="muted">It may have expired, already been used, or been replaced by a newer invitation. Ask your workplace administrator to send a new setup link.</p>
+        <a class="button button-primary button-wide" href="{% url 'employee_login' %}">Go to sign in</a>
+      {% else %}
+        <h2>Create your password</h2>
+        <p class="muted">Choose a strong password you do not use for other accounts.</p>
+        <form method="post" enctype="multipart/form-data" class="login-form">
+          {% csrf_token %}
+          {% for field in form %}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% if field.field.widget.input_type == "password" %}<div class="password-input-wrap">{{ field }}{% include "accounts/_password_visibility_toggle.html" with field_id=field.id_for_label %}</div>{% else %}{{ field }}{% endif %}
+            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+            {% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+          <button class="button button-primary button-wide" type="submit">Set password <span>→</span></button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="login-copyright">© NexaWork · Connect. Collaborate. Work smarter.</div>
+  </section>
+</main>
+{% endblock %}

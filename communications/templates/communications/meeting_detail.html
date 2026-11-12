@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ meeting.title }} · NexaWork{% endblock %}
+{% block breadcrumb %}<a href="{% url 'meeting_list' %}">Meetings</a> <span>/</span> {{ meeting.title }}{% endblock %}
+{% block content %}
+<div class="page-heading"><div><div class="eyebrow">WORKPLACE MEETING · {{ meeting.get_status_display|upper }}</div><h1>{{ meeting.title }}</h1><p class="muted">{{ meeting.starts_at|date:"l, F j, Y · g:i A" }} · Hosted by {{ meeting.host.get_full_name|default:meeting.host.employee_id }}</p></div></div>
+{% if can_manage_roles and meeting.status != "completed" and meeting.status != "cancelled" %}<form method="post" action="{% url 'meeting_lock' meeting.id %}" class="meeting-lock-form">{% csrf_token %}<button class="button button-outline small-button" type="submit">{% if meeting.is_locked %}Unlock meeting{% else %}Lock meeting{% endif %}</button></form>{% endif %}
+<div class="meeting-detail-grid">
+  <section class="panel meeting-room-panel">
+    {% if livekit %}
+      <div class="livekit-room">
+        <div id="livekit-videos" class="livekit-videos"><div class="livekit-placeholder"><span>◉</span><strong>Connecting to NexaWork Meeting…</strong><small>Allow camera and microphone access when prompted.</small></div></div>
+        <div id="livekit-status" class="room-status"><i class="online-dot"></i> Connecting</div>
+      </div>
+      <div class="meeting-controls">
+        <button type="button" class="meeting-control" id="enable-audio">🔊 <span>Enable audio</span></button>
+        <button type="button" class="meeting-control" id="toggle-mic">🎙 <span>Mute</span></button>
+        {% if meeting.meeting_type == "video" %}<button type="button" class="meeting-control" id="toggle-camera">▣ <span>Camera</span></button>{% endif %}
+        <button type="button" class="meeting-control" id="toggle-share">▱ <span>Share screen</span></button>
+        <form method="post" action="{% url 'meeting_leave' meeting.id %}">{% csrf_token %}<button class="meeting-control leave-control" type="submit">↗ <span>Leave</span></button></form>
+        {% if can_end %}<form method="post" action="{% url 'meeting_end' meeting.id %}" onsubmit="return confirm('End this meeting for everyone?')">{% csrf_token %}<button class="meeting-control end-control" type="submit">■ <span>End for all</span></button></form>{% endif %}
+      </div>
+      <p class="meeting-audio-tip">Testing both accounts on one computer? Use headphones, or mute one microphone to prevent speaker feedback.</p>
+    {% else %}
+      <div class="meeting-room-art"><div class="room-orbit orbit-one"></div><div class="room-orbit orbit-two"></div><div class="room-icon">◉</div><span class="room-status"><i class="online-dot"></i> Meeting room</span></div>
+      <div class="meeting-room-copy"><h2>Make space for a great conversation.</h2><p class="muted">{{ meeting.description|default:"Join your colleagues for this scheduled workplace meeting." }}</p>
+        {% if participant and participant.status == "joined" %}
+          {% if meeting.provider_url %}<a href="{{ meeting.provider_url }}" class="button button-primary" target="_blank" rel="noopener noreferrer">Open external meeting <span>↗</span></a><p class="provider-note">This external provider does not yet support NexaWork participant removal controls. Configure LiveKit for server-enforced room access.</p>
+          {% else %}<span class="button button-disabled">Meeting provider not configured</span><p class="provider-note">Configure LiveKit with LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to enable integrated audio/video.</p>{% endif %}
+        {% elif meeting.status == "cancelled" or meeting.status == "completed" %}<span class="status-tag removed">This meeting has ended</span>
+        {% else %}
+          {% if meeting.is_locked and not can_manage %}<span class="status-tag removed">Meeting is locked</span>
+          {% else %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="join"><button class="button button-primary" type="submit">{% if meeting.status == "active" %}Join meeting{% else %}Join when ready{% endif %} <span>→</span></button></form>{% endif %}
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+  <section class="panel participants-panel"><div class="panel-heading"><div><div class="eyebrow">YOUR COLLEAGUES</div><h2>Participants <span class="count-pill">{{ participant_rows.count }}</span></h2></div></div>
+    <div class="participant-list">
+      {% for row in participant_rows %}
+        <div class="participant-row" data-media-identity="{{ row.user.employee_id }}"><span class="avatar">{{ row.user.first_name|default:row.user.employee_id|slice:":1"|upper }}</span><span class="participant-name"><strong>{{ row.user.get_full_name|default:row.user.employee_id }}</strong><small>{% if row.role == "host" %}Host{% elif row.role == "cohost" %}Co-host{% else %}{{ row.user.get_role_display }}{% endif %}</small><small class="media-participant-status" data-media-status>Waiting for live call connection</small></span>
+          {% if row.removed_until and row.removed_until > now %}<span class="status-tag removed">Removed</span>{% elif row.status == "joined" %}<span class="status-tag active">In meeting</span>{% elif row.status == "left" %}<span class="status-tag">Left</span>{% else %}<span class="status-tag">Invited</span>{% endif %}
+          {% if can_manage and row.user_id != meeting.host_id and row.status == "joined" %}<form method="post" action="{% url 'meeting_mute_participant' meeting.id row.user_id %}" data-mute-form data-identity="{{ row.user.employee_id }}">{% csrf_token %}<input type="hidden" name="track_sid" value=""><input type="hidden" name="muted" value="true"><button class="text-button" type="button" disabled data-mute-button>Mute microphone</button></form>{% endif %}
+          {% if can_manage_roles and row.user_id != meeting.host_id and row.status == "joined" %}<form method="post" action="{% url 'meeting_promote' meeting.id row.user_id %}">{% csrf_token %}<button class="text-button" type="submit">{% if row.role == "cohost" %}Demote{% else %}Make co-host{% endif %}</button></form>{% endif %}
+          {% if can_manage and row.user_id != meeting.host_id and row.status == "joined" %}<form method="post" action="{% url 'remove_meeting_participant' meeting.id row.user_id %}" onsubmit="return confirm('Remove this participant from the meeting and block rejoining for 10 minutes?')">{% csrf_token %}<button class="remove-button" type="submit" title="Remove participant">×</button></form>{% endif %}
+        </div>
+      {% empty %}<div class="empty-state compact"><span>♧</span><p>No participants have joined yet.</p></div>{% endfor %}
+    </div>
+    {% if can_manage %}<p class="provider-note">Removal triggers a server-side media-provider disconnect when LiveKit is configured. Rejoin is blocked for 10 minutes.</p>{% endif %}
+  </section>
+</div>
+{% if participant and participant.status == "joined" %}
+<section class="panel meeting-chat-panel"><div class="panel-heading"><div><div class="eyebrow">TEMPORARY MEETING CHAT</div><h2>Meeting chat</h2></div></div>
+  <div id="meeting-chat-messages" class="meeting-chat-messages" data-endpoint="{% url 'meeting_chat_api' meeting.id %}" data-websocket-path="/ws/meetings/{{ meeting.id }}/chat/">{% for item in meeting_chat_messages %}<div class="meeting-chat-message" data-message-id="{{ item.id }}"><strong>{{ item.author.get_full_name|default:item.author.employee_id }}</strong><p>{{ item.body }}</p><time>{{ item.created_at|date:"g:i A" }}</time></div>{% empty %}<p class="muted" data-chat-empty>No messages yet. Send a message to everyone in this meeting.</p>{% endfor %}</div>
+  <p class="meeting-chat-status" id="meeting-chat-status" role="status" aria-live="polite">Live updates connecting…</p>
+  <form method="post" action="{% url 'meeting_chat_api' meeting.id %}" class="meeting-chat-form" data-chat-form>{% csrf_token %}<label class="sr-only" for="meeting-chat-input">Write a meeting message</label><input id="meeting-chat-input" name="body" maxlength="2000" placeholder="Message meeting participants…" required><button type="submit" class="button button-primary">Send</button></form>
+</section>
+{% endif %}
+{% if livekit %}
+{{ livekit|json_script:"meeting-config" }}
+<script type="module" src="{% static 'js/meeting-room.js' %}?v=4"></script>
+{% endif %}
+<script>
+document.querySelectorAll("[data-chat-form]").forEach(form => {
+  const messages = document.getElementById("meeting-chat-messages");
+  const status = document.getElementById("meeting-chat-status");
+  const input = form.elements.body;
+  const sendButton = form.querySelector("button[type=submit]");
+  let latestId = Math.max(0, ...[...messages.querySelectorAll("[data-message-id]")]
+    .map(row => Number(row.dataset.messageId) || 0));
+  let polling = false;
+  let socket;
+  let fallbackTimer;
+  const renderMessage = item => {
+    if (!item.id || messages.querySelector(`[data-message-id="${item.id}"]`)) return;
+    messages.querySelector("[data-chat-empty]")?.remove();
+    const row = document.createElement("div");
+    row.className = "meeting-chat-message";
+    row.dataset.messageId = item.id;
+    const author = document.createElement("strong");
+    author.textContent = item.author;
+    const body = document.createElement("p");
+    body.textContent = item.body;
+    const time = document.createElement("time");
+    time.textContent = item.created_at;
+    row.append(author, body, time);
+    messages.append(row);
+    messages.scrollTop = messages.scrollHeight;
+    latestId = Math.max(latestId, Number(item.id));
+  };
+  const poll = async () => {
+    if (polling || document.hidden) return;
+    polling = true;
+    try {
+      const response = await fetch(`${messages.dataset.endpoint}?after=${latestId}`, {
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`Meeting chat update failed (${response.status}).`);
+      const result = await response.json();
+      result.messages.forEach(renderMessage);
+      if (socket?.readyState === 1) status.textContent = "Live updates on";
+    } catch (error) {
+      status.textContent = "Reconnecting to meeting chat…";
+      console.error("NexaWork meeting chat update failed", error);
+    } finally {
+      polling = false;
+    }
+  };
+  const connect = () => {
+    if (!("WebSocket" in window)) {
+      status.textContent = "Using meeting chat fallback updates";
+      fallbackTimer ??= window.setInterval(poll, 3000);
+      return;
+    }
+    const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
+    socket = new WebSocket(`${scheme}//${window.location.host}${messages.dataset.websocketPath}`);
+    socket.addEventListener("open", () => {
+      window.clearInterval(fallbackTimer);
+      fallbackTimer = undefined;
+      status.textContent = "Live updates on";
+      poll();
+    });
+    socket.addEventListener("message", event => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "message.created") renderMessage(message);
+      } catch (error) {
+        console.error("NexaWork meeting chat received an invalid update", error);
+      }
+    });
+    socket.addEventListener("close", () => {
+      status.textContent = "Reconnecting to meeting chat…";
+      fallbackTimer ??= window.setInterval(poll, 3000);
+      window.setTimeout(connect, 2000);
+    });
+    socket.addEventListener("error", () => socket.close());
+  };
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!input.value.trim()) return;
+    sendButton.disabled = true;
+    try {
+      const response = await fetch(messages.dataset.endpoint, {
+        method: "POST",
+        body: new FormData(form),
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const result = contentType.includes("application/json")
+        ? await response.json()
+        : {};
+      if (!response.ok) throw new Error(result.error || `Message send failed (${response.status}).`);
+      if (!contentType.includes("application/json")) {
+        throw new Error("The server returned an unexpected response. Please try again.");
+      }
+      renderMessage(result);
+      input.value = "";
+      status.textContent = socket?.readyState === 1
+        ? "Live updates on"
+        : "Message sent; reconnecting to meeting chat…";
+    } catch (error) {
+      status.textContent = error instanceof Error
+        ? `Message not sent: ${error.message}`
+        : "Message not sent. Please try again.";
+      console.error("NexaWork meeting chat send failed", error);
+    } finally {
+      sendButton.disabled = false;
+      input.focus();
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) poll();
+  });
+  connect();
+  messages.scrollTop = messages.scrollHeight;
+});
+</script>
+{% endblock %}

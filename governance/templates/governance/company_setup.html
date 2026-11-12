@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Company setup · NexaWork{% endblock %}
+{% block breadcrumb %}Company setup{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">ONE COMPANY WORKSPACE</div>
+    <h1>Company setup</h1>
+    <p class="muted">Each NexaWork installation is configured for one company.</p>
+  </div>
+</div>
+<section class="panel">
+  {% if organization %}
+    <h2>{{ organization.name }} is already set up</h2>
+    <p class="muted">Assign your administrator account to this company to manage its workspace.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button class="button button-primary" type="submit">Manage {{ organization.name }}</button>
+    </form>
+  {% else %}
+    <h2>Set up your company</h2>
+    <p class="muted">Create the one company workspace for this installation. Your superuser account will become its employer administrator.</p>
+    <form method="post" class="stacked-form">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="form-field">
+        <label for="{{ form.name.id_for_label }}">Company name</label>
+        {{ form.name }}
+        {{ form.name.errors }}
+      </div>
+      <div class="form-field">
+        <label for="{{ form.slug.id_for_label }}">Company URL slug</label>
+        {{ form.slug }}
+        {{ form.slug.errors }}
+      </div>
+      <button class="button button-primary" type="submit">Set up company</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

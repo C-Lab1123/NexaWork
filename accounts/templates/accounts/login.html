@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{% if employer_login %}Employer sign in{% else %}Employee sign in{% endif %} · NexaWork{% endblock %}
+{% block public_content %}
+<main class="login-layout">
+  <section class="login-showcase">
+    <a class="brand brand-light" href="{% url 'employee_login' %}">
+      <span class="brand-mark">N</span><span>NexaWork<small>CONNECT. COLLABORATE.</small></span>
+    </a>
+    <div class="showcase-copy">
+      <div class="eyebrow">YOUR WORKPLACE, IN SYNC</div>
+      <h1>Better work<br>starts <em>together.</em></h1>
+      <p>One connected space for your people, conversations and ideas — wherever work takes you.</p>
+      <div class="showcase-points"><span>✦ &nbsp;One team, anywhere</span><span>✦ &nbsp;Everything in its place</span></div>
+    </div>
+    <div class="showcase-foot">A more connected way to work.</div>
+  </section>
+  <section class="login-panel">
+    <div class="login-card">
+      <div class="login-icon">✳</div>
+      <div class="eyebrow">WELCOME TO NEXAWORK</div>
+      <h2>{% if employer_login %}Employer sign in{% else %}Welcome back{% endif %}</h2>
+      <p class="muted">{% if employer_login %}Sign in to manage your workplace.{% else %}Sign in with your employee ID to continue.{% endif %}</p>
+      <div class="login-tabs">
+        <a class="{% if not employer_login %}active{% endif %}" href="{% url 'employee_login' %}">Employee</a>
+        <a class="{% if employer_login %}active{% endif %}" href="{% url 'employer_login' %}">Employer</a>
+      </div>
+      {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+      <form method="post" class="login-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <label for="employee_id">Employee ID</label>
+        <input id="employee_id" name="employee_id" autocomplete="username" required autofocus placeholder="e.g. NW-1042">
+        <label for="password">Password</label>
+        <div class="password-input-wrap">
+          <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
+          {% include "accounts/_password_visibility_toggle.html" with field_id="password" %}
+        </div>
+        <button class="button button-primary button-wide" type="submit">Sign in <span>→</span></button>
+      </form>
+      <p class="login-help">Need access? Contact your NexaWork administrator.</p>
+    </div>
+    <div class="login-copyright">© NexaWork · Connect. Collaborate. Work smarter.</div>
+  </section>
+</main>
+{% endblock %}
