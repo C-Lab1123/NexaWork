@@ -63,6 +63,9 @@ services:
     plan: free
     region: frankfurt
     maxmemoryPolicy: noeviction
+    ipAllowList:
+      - source: 0.0.0.0/32
+        description: Block external access; allow private network connections only.
 
 databases:
   - name: nexawork-db
