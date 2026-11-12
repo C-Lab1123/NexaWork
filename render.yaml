@@ -50,7 +50,7 @@ services:
       - key: EMAIL_PORT
         value: "2525"
       - key: DEFAULT_FROM_EMAIL
-        value: "NexaWork <owicharles7@12687747.brevosend.com>"
+        value: "NexaWork <owicharles7@gmail.com>"
       - key: EMAIL_HOST_USER
         sync: false
       - key: EMAIL_HOST_PASSWORD
