@@ -5,7 +5,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --no-input
-    startCommand: python manage.py migrate --noinput && daphne -b 0.0.0.0 -p $PORT QueshStandards.asgi:application
+    startCommand: python manage.py migrate --noinput && python manage.py provision_deployment_superuser && daphne -b 0.0.0.0 -p $PORT QueshStandards.asgi:application
     initialDeployHook: python manage.py createsuperuser --noinput
     healthCheckPath: /ready/
     autoDeployTrigger: commit
